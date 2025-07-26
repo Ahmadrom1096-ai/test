@@ -1,78 +1,118 @@
-<script>
-  const token = new URLSearchParams(window.location.search).get('token');
-  const scriptUrl = 'https://script.google.com/macros/s/AKfycbwCCbd9lr7lt2UiuZvXepiMYcy__H7PD4fZ5FsCMV8Ezwiy2kCdKQrCTk43YQp5nF8Bvw/exec'; // Ganti ini!
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Ujian Seleksi</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 2rem auto; padding: 1rem; }
+    h1, h2 { color: #333; }
+    textarea { width: 100%; min-height: 100px; margin-top: 5px; }
+    .soal { margin-bottom: 1.5rem; }
+    button { padding: 10px 20px; font-size: 1rem; }
+  </style>
+</head>
+<body>
 
-  if (!token) {
-    document.body.innerHTML = "<p><strong>Token tidak ditemukan di URL.</strong></p>";
-    throw new Error("Token not found");
-  }
+  <h1>Ujian Seleksi Karyawan</h1>
+  <div id="info"></div>
 
-  async function ambilSoal() {
-    const res = await fetch(`${scriptUrl}?token=${token}`);
-    const json = await res.json();
+  <form id="ujianForm">
+    <div id="soal-teknis">
+      <h2>Soal Teknis</h2>
+    </div>
+    <div id="soal-psikologi">
+      <h2>Soal Psikologi</h2>
+    </div>
+    <button type="submit">Kirim Jawaban</button>
+  </form>
 
-    if (json.status !== "success") {
-      document.body.innerHTML = `<p><strong>Gagal memuat soal: ${json.message}</strong></p>`;
-      return;
+  <script>
+    const token = new URLSearchParams(window.location.search).get('token');
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwY2LIO5jzxdlQ2XpOLQnMqA75T_qP-dxxECwodIySTDb8T_JhVKKVvmgsaVGjrOBdzww/exec'; // Ganti ini!
+
+    if (!token) {
+      document.body.innerHTML = "<p><strong>Token tidak ditemukan di URL.</strong></p>";
+      throw new Error("Token tidak ditemukan");
     }
 
-    const data = json.data;
+    async function ambilSoal() {
+      try {
+        const res = await fetch(`${scriptUrl}?token=${token}`);
+        const json = await res.json();
 
-    document.getElementById('info').innerHTML = `
-      <p>Nama: <strong>${data.Nama}</strong></p>
-      <p>Email: ${data.Email}</p>
-      <p>Posisi: ${data.Posisi}</p>
-      <p>Token: ${token}</p>
-    `;
+        if (json.status !== "success") {
+          document.body.innerHTML = `<p><strong>Gagal memuat soal: ${json.message}</strong></p>`;
+          return;
+        }
 
-    const soalContainer = (id, soal) => {
-      const div = document.getElementById(id);
-      soal.forEach((s, i) => {
-        const el = document.createElement('div');
-        el.className = 'soal';
-        el.innerHTML = `
-          <label><strong>${i + 1}. ${s.pertanyaan || s}</strong></label>
-          <textarea name="${id}_${i}" required></textarea>
+        const data = json.data;
+
+        document.getElementById('info').innerHTML = `
+          <p>Nama: <strong>${data.Nama}</strong></p>
+          <p>Email: ${data.Email}</p>
+          <p>Posisi: ${data.Posisi}</p>
         `;
-        div.appendChild(el);
-      });
-    };
 
-    soalContainer('soal-teknis', data['Soal Teknis'] || []);
-    soalContainer('soal-psikologi', data['Soal Psikologi'] || []);
-  }
+        const soalContainer = (id, soal) => {
+          const div = document.getElementById(id);
+          soal.forEach((s, i) => {
+            const el = document.createElement('div');
+            el.className = 'soal';
+            el.innerHTML = `
+              <label><strong>${i + 1}. ${s.pertanyaan || s}</strong></label>
+              <textarea name="${id}_${i}" required></textarea>
+            `;
+            div.appendChild(el);
+          });
+        };
 
-  document.getElementById('ujianForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
+        soalContainer('soal-teknis', data['Soal Teknis'] || []);
+        soalContainer('soal-psikologi', data['Soal Psikologi'] || []);
 
-    const jawaban_teknis = [];
-    const jawaban_psikologi = [];
+      } catch (err) {
+        document.body.innerHTML = `<p><strong>Terjadi kesalahan saat mengambil soal: ${err.message}</strong></p>`;
+      }
+    }
 
-    const teknisEl = document.querySelectorAll('[name^="soal-teknis_"]');
-    teknisEl.forEach((el, i) => jawaban_teknis.push({ nomor: i + 1, jawaban: el.value }));
+    document.getElementById('ujianForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
 
-    const psikologiEl = document.querySelectorAll('[name^="soal-psikologi_"]');
-    psikologiEl.forEach((el, i) => jawaban_psikologi.push({ nomor: i + 1, jawaban: el.value }));
+      const jawaban_teknis = [];
+      const jawaban_psikologi = [];
 
-    const body = {
-      token,
-      jawaban_teknis,
-      jawaban_psikologi
-    };
+      const teknisEl = document.querySelectorAll('[name^="soal-teknis_"]');
+      teknisEl.forEach((el, i) => jawaban_teknis.push({ nomor: i + 1, jawaban: el.value }));
 
-    const res = await fetch(scriptUrl, {
-      method: 'PUT',
-      body: JSON.stringify(body)
+      const psikologiEl = document.querySelectorAll('[name^="soal-psikologi_"]');
+      psikologiEl.forEach((el, i) => jawaban_psikologi.push({ nomor: i + 1, jawaban: el.value }));
+
+      const body = {
+        token,
+        jawaban_teknis,
+        jawaban_psikologi
+      };
+
+      try {
+        const res = await fetch(scriptUrl, {
+          method: 'PUT',
+          body: JSON.stringify(body)
+        });
+
+        const json = await res.json();
+
+        if (json.status === "sukses") {
+          document.body.innerHTML = "<h2>✅ Jawaban Anda berhasil dikirim. Terima kasih!</h2>";
+        } else {
+          alert("❌ Gagal mengirim jawaban: " + json.message);
+        }
+
+      } catch (err) {
+        alert("❌ Terjadi kesalahan saat mengirim: " + err.message);
+      }
     });
 
-    const json = await res.json();
+    ambilSoal();
+  </script>
 
-    if (json.status === "sukses") {
-      document.body.innerHTML = "<h2>Jawaban Anda berhasil dikirim. Terima kasih!</h2>";
-    } else {
-      alert("Gagal mengirim jawaban: " + json.message);
-    }
-  });
-
-  ambilSoal();
-</script>
+</body>
+</html>
