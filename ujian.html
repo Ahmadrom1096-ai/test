@@ -3,11 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>Ujian Seleksi</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
-    h2 { border-bottom: 2px solid #ccc; }
-    .soal { margin-bottom: 20px; }
-  </style>
 </head>
 <body>
   <h1>Ujian Seleksi</h1>
@@ -19,10 +14,8 @@
   </form>
 
   <script>
-    // === CONFIG ===
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyqgydOPSl75_yBOS3R4S2c5pZYnYN45xKTULx9kKopV-8HnANW-oiO_U90G9EjKHttnw/exec';
 
-    // === AMBIL TOKEN ===
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
 
@@ -31,12 +24,11 @@
       throw new Error('Token tidak ada.');
     }
 
-    // === AMBIL SOAL ===
     fetch(`${SCRIPT_URL}?token=${token}`)
       .then(res => res.json())
       .then(data => {
         if (data.status !== 'success') {
-          document.getElementById('info').innerText = 'Gagal memuat soal: ' + data.message;
+          document.getElementById('info').innerText = 'Gagal: ' + data.message;
           return;
         }
 
@@ -48,11 +40,9 @@
 
       })
       .catch(err => {
-        console.error(err);
         document.getElementById('info').innerText = 'Error: ' + err.message;
       });
 
-    // === RENDER SOAL ===
     function renderSoal(judul, soalArray, targetId) {
       const container = document.getElementById(targetId);
       const sectionTitle = document.createElement('h2');
@@ -61,10 +51,8 @@
 
       soalArray.forEach((item, index) => {
         const div = document.createElement('div');
-        div.className = 'soal';
-
         const p = document.createElement('p');
-        p.innerHTML = `${item.question_number}. ${item.question_text}`;
+        p.innerText = `${item.question_number}. ${item.question_text}`;
         div.appendChild(p);
 
         ['A','B','C','D'].forEach(opt => {
@@ -78,7 +66,6 @@
       });
     }
 
-    // === HANDLE SUBMIT ===
     document.getElementById('ujianForm').addEventListener('submit', function(e) {
       e.preventDefault();
 
@@ -91,30 +78,25 @@
       const psikologiInputs = document.querySelectorAll('input[name^="Psikologi_"]:checked');
       psikologiInputs.forEach(input => jawabanPsikologi.push(input.value));
 
-      const payload = {
-        token: token,
-        jawaban_teknis: jawabanTeknis,
-        jawaban_psikologi: jawabanPsikologi
-      };
-
-      console.log('Kirim:', payload);
-
       fetch(SCRIPT_URL, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          token: token,
+          jawaban_teknis: jawabanTeknis,
+          jawaban_psikologi: jawabanPsikologi
+        })
       })
       .then(res => res.json())
       .then(result => {
         if (result.status === 'sukses') {
-          alert('Jawaban berhasil disimpan! Terima kasih.');
-          window.location.href = 'https://ahmadrom1096-ai.github.io/test/selesai.html'; // opsional: redirect halaman selesai
+          alert('Jawaban terkirim!');
+          window.location.href = 'selesai.html';
         } else {
-          alert('Gagal menyimpan: ' + result.message);
+          alert('Gagal: ' + result.message);
         }
       })
       .catch(err => {
-        console.error(err);
         alert('Error: ' + err.message);
       });
     });
