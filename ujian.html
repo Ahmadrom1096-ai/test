@@ -2,18 +2,19 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Ujian Online</title>
+  <title>Ujian Online - Shankara Group</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 2rem; max-width: 800px; margin: auto; }
     h2 { margin-bottom: 1rem; }
     .soal-block { margin-bottom: 2rem; }
     .soal-block p { margin: 0.5rem 0; }
     .result { background: #e0ffe0; padding: 1rem; margin-top: 2rem; border: 1px solid #0a0; }
-    button { padding: 0.5rem 1rem; }
+    button { padding: 0.5rem 1rem; background-color: #007bff; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #0056b3; }
   </style>
 </head>
 <body>
-  <h2>Ujian Online</h2>
+  <h2>Ujian Tulis Online – Shankara Group</h2>
   <p id="status">Memuat soal...</p>
 
   <form id="form-ujian" style="display: none;">
@@ -62,7 +63,7 @@
           <p><strong>${i + 1}.</strong> ${soal.question_text}</p>
           ${Object.keys(soal.options).map(opt => `
             <label>
-              <input type="radio" name="${kategori}_${i}" value="${opt}"> ${opt}. ${soal.options[opt]}
+              <input type="radio" name="${containerId}_${i}" value="${opt}"> ${opt}. ${soal.options[opt]}
             </label><br/>
           `).join("")}
         `;
@@ -86,8 +87,8 @@
     document.getElementById("form-ujian").addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const answers_teknis = getJawaban("Teknis");
-      const answers_psikologi = getJawaban("Psikologi");
+      const answers_teknis = getJawaban("soal_teknis");
+      const answers_psikologi = getJawaban("soal_psikologi");
 
       const payload = {
         token,
@@ -108,6 +109,7 @@
         document.getElementById("hasil").style.display = "block";
         document.getElementById("hasil").innerHTML = `
           <h3>Terima kasih!</h3>
+          <p>Jawaban Anda berhasil dikirim.</p>
           <p>Skor Teknis: <strong>${result.skor_teknis}</strong></p>
           <p>Skor Psikologi: <strong>${result.skor_psikologi}</strong></p>
         `;
