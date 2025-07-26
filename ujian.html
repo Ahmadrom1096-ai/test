@@ -1,32 +1,38 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Ujian Online</title>
   <style>
-    body { font-family: sans-serif; max-width: 700px; margin: auto; padding: 1em; }
-    .soal-block { margin-bottom: 2em; }
+    body { font-family: Arial, sans-serif; padding: 2rem; max-width: 800px; margin: auto; }
+    h2 { margin-bottom: 1rem; }
+    .soal-block { margin-bottom: 2rem; }
+    .soal-block p { margin: 0.5rem 0; }
+    .result { background: #e0ffe0; padding: 1rem; margin-top: 2rem; border: 1px solid #0a0; }
+    button { padding: 0.5rem 1rem; }
   </style>
 </head>
 <body>
-
   <h2>Ujian Online</h2>
-  <div id="status">Memuat soal...</div>
+  <p id="status">Memuat soal...</p>
 
-  <form id="form-ujian">
+  <form id="form-ujian" style="display: none;">
     <div id="soal_teknis"></div>
     <div id="soal_psikologi"></div>
     <button type="submit">Kirim Jawaban</button>
   </form>
 
+  <div class="result" id="hasil" style="display: none;"></div>
+
   <script>
     const token = new URLSearchParams(window.location.search).get("token");
+    const endpoint = "https://script.google.com/macros/s/AKfycbyF_comq7SOJU-1WlH8rbnOTPdhi6cDjR1RmC-zuq9VADqsRXmYd3UUGKG-pOKOZLD-/exec";
 
     if (!token) {
       document.getElementById("status").innerText = "Token tidak ditemukan di URL.";
       document.getElementById("form-ujian").style.display = "none";
     } else {
-      fetch(`https://script.google.com/macros/s/AKfycbyF_comq7SOJU-1WlH8rbnOTPdhi6cDjR1RmC-zuq9VADqsRXmYd3UUGKG-pOKOZLD-/exec?token=${token}`)
+      fetch(`${endpoint}?token=${token}`)
         .then(res => res.json())
         .then(data => {
           if (data.status !== "success") {
@@ -35,6 +41,7 @@
           }
 
           document.getElementById("status").style.display = "none";
+          document.getElementById("form-ujian").style.display = "block";
 
           renderSoal(data.soal_teknis, "soal_teknis", "Teknis");
           renderSoal(data.soal_psikologi, "soal_psikologi", "Psikologi");
@@ -49,47 +56,64 @@
       const container = document.getElementById(containerId);
       container.innerHTML = `<h3>Soal ${kategori}</h3>`;
       soals.forEach((soal, i) => {
-        const block = document.createElement("div");
-        block.className = "soal-block";
-        block.innerHTML = `
-          <p>${i + 1}. ${soal.question_text}</p>
-          ${["A", "B", "C", "D"].map(op =>
-            `<label><input type="radio" name="${kategori}_${i}" value="${op}"> ${op}. ${soal.options[op]}</label><br>`
-          ).join("")}
+        const div = document.createElement("div");
+        div.className = "soal-block";
+        div.innerHTML = `
+          <p><strong>${i + 1}.</strong> ${soal.question_text}</p>
+          ${Object.keys(soal.options).map(opt => `
+            <label>
+              <input type="radio" name="${kategori}_${i}" value="${opt}"> ${opt}. ${soal.options[opt]}
+            </label><br/>
+          `).join("")}
         `;
-        container.appendChild(block);
+        container.appendChild(div);
       });
     }
 
-    document.getElementById("form-ujian").addEventListener("submit", async function(e) {
+    function getJawaban(kategori) {
+      const radios = document.querySelectorAll(`input[name^="${kategori}_"]`);
+      const jumlahSoal = [...new Set([...radios].map(r => r.name))].length;
+      const jawaban = [];
+
+      for (let i = 0; i < jumlahSoal; i++) {
+        const checked = document.querySelector(`input[name="${kategori}_${i}"]:checked`);
+        jawaban.push(checked ? checked.value : null);
+      }
+
+      return jawaban;
+    }
+
+    document.getElementById("form-ujian").addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const getJawaban = (kategori, jumlah) => {
-        const hasil = [];
-        for (let i = 0; i < jumlah; i++) {
-          const jawaban = document.querySelector(`input[name="${kategori}_${i}"]:checked`);
-          hasil.push(jawaban ? jawaban.value : null);
-        }
-        return hasil;
-      };
-
-      const jumlahTeknis = document.querySelectorAll('[name^="Teknis_"]').length / 4;
-      const jumlahPsikologi = document.querySelectorAll('[name^="Psikologi_"]').length / 4;
+      const answers_teknis = getJawaban("Teknis");
+      const answers_psikologi = getJawaban("Psikologi");
 
       const payload = {
-        token: token,
-        answers_teknis: getJawaban("Teknis", jumlahTeknis),
-        answers_psikologi: getJawaban("Psikologi", jumlahPsikologi)
+        token,
+        answers_teknis,
+        answers_psikologi
       };
 
-      const res = await fetch("https://script.google.com/macros/s/AKfycbyF_comq7SOJU-1WlH8rbnOTPdhi6cDjR1RmC-zuq9VADqsRXmYd3UUGKG-pOKOZLD-/exec", {
+      const response = await fetch(endpoint, {
         method: "POST",
-        body: JSON.stringify(payload),
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
 
-      const result = await res.json();
-      alert(`Jawaban dikirim! Skor Teknis: ${result.skor_teknis}, Psikologi: ${result.skor_psikologi}`);
+      const result = await response.json();
+
+      if (result.status === "success") {
+        document.getElementById("form-ujian").style.display = "none";
+        document.getElementById("hasil").style.display = "block";
+        document.getElementById("hasil").innerHTML = `
+          <h3>Terima kasih!</h3>
+          <p>Skor Teknis: <strong>${result.skor_teknis}</strong></p>
+          <p>Skor Psikologi: <strong>${result.skor_psikologi}</strong></p>
+        `;
+      } else {
+        alert("Gagal mengirim jawaban: " + result.message);
+      }
     });
   </script>
 </body>
