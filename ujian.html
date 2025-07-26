@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Ujian Seleksi</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 2rem auto; padding: 1rem; }
+    h1, h2 { color: #333; }
+    textarea { width: 100%; min-height: 100px; margin-top: 5px; }
+    .soal { margin-bottom: 1.5rem; }
+    button { padding: 10px 20px; font-size: 1rem; }
+  </style>
+</head>
+<body>
+
+  <h1>Ujian Seleksi Karyawan</h1>
+  <div id="info"></div>
+
+  <form id="ujianForm">
+    <div id="soal-teknis">
+      <h2>Soal Teknis</h2>
+    </div>
+    <div id="soal-psikologi">
+      <h2>Soal Psikologi</h2>
+    </div>
+    <button type="submit">Kirim Jawaban</button>
+  </form>
+
+  <script>
+    const token = new URLSearchParams(window.location.search).get('token');
+    const sheetId = '1Is4mkNPokLVrFDrMDNR5bCI1b6dB1g1eHZmRE0S2NM4'; // ID spreadsheet Anda
+    const scriptUrl = 'https://script.google.com/macros/s/YOUR_DEPLOYED_URL/exec'; // Ganti dengan Web App URL Anda
+
+    if (!token) {
+      document.body.innerHTML = "<p><strong>Token tidak ditemukan di URL.</strong></p>";
+      throw new Error("Token not found");
+    }
+
+    async function ambilSoal() {
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/UJIAN_SESI?alt=json&key=YOUR_API_KEY`;
+      const res = await fetch(url);
+      const json = await res.json();
+
+      const rows = json.values || [];
+      const headers = rows[0];
+      const data = rows.slice(1);
+
+      const idx = headers.indexOf('Token');
+      const baris = data.find(row => row[idx] === token);
+
+      if (!baris) {
+        document.body.innerHTML = "<p><strong>Token tidak ditemukan di spreadsheet.</strong></p>";
+        return;
+      }
+
+      const map = {};
+      headers.forEach((h, i) => map[h] = baris[i]);
+
+      document.getElementById('info').innerHTML = `
+        <p>Nama: <strong>${map.Nama}</strong></p>
+        <p>Email: ${map.Email}</p>
+        <p>Posisi: ${map.Posisi}</p>
+        <p>Token: ${token}</p>
+      `;
+
+      const teknis = JSON.parse(map['Soal Teknis'] || '[]');
+      const psikologi = JSON.parse(map['Soal Psikologi'] || '[]');
+
+      const soalContainer = (id, soal) => {
+        const div = document.getElementById(id);
+        soal.forEach((s, i) => {
+          const el = document.createElement('div');
+          el.className = 'soal';
+          el.innerHTML = `
+            <label><strong>${i + 1}. ${s.pertanyaan || s}</strong></label>
+            <textarea name="${id}_${i}" required></textarea>
+          `;
+          div.appendChild(el);
+        });
+      };
+
+      soalContainer('soal-teknis', teknis);
+      soalContainer('soal-psikologi', psikologi);
+    }
+
+    document.getElementById('ujianForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const jawaban_teknis = [];
+      const jawaban_psikologi = [];
+
+      const teknisEl = document.querySelectorAll('[name^="soal-teknis_"]');
+      teknisEl.forEach((el, i) => jawaban_teknis.push({ nomor: i + 1, jawaban: el.value }));
+
+      const psikologiEl = document.querySelectorAll('[name^="soal-psikologi_"]');
+      psikologiEl.forEach((el, i) => jawaban_psikologi.push({ nomor: i + 1, jawaban: el.value }));
+
+      const body = {
+        token,
+        jawaban_teknis,
+        jawaban_psikologi
+      };
+
+      const res = await fetch(scriptUrl, {
+        method: 'PUT',
+        body: JSON.stringify(body)
+      });
+
+      const json = await res.json();
+
+      if (json.status === "sukses") {
+        document.body.innerHTML = "<h2>Jawaban Anda berhasil dikirim. Terima kasih!</h2>";
+      } else {
+        alert("Gagal mengirim jawaban: " + json.message);
+      }
+    });
+
+    ambilSoal();
+  </script>
+
+</body>
+</html>
