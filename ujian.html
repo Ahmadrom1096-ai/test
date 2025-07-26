@@ -4,13 +4,37 @@
   <meta charset="UTF-8" />
   <title>Ujian Online - Shankara Group</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 2rem; max-width: 800px; margin: auto; }
-    h2 { margin-bottom: 1rem; }
-    .soal-block { margin-bottom: 2rem; }
-    .soal-block p { margin: 0.5rem 0; }
-    .result { background: #e0ffe0; padding: 1rem; margin-top: 2rem; border: 1px solid #0a0; }
-    button { padding: 0.5rem 1rem; background-color: #007bff; color: white; border: none; cursor: pointer; }
-    button:hover { background-color: #0056b3; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      max-width: 800px;
+      margin: auto;
+    }
+    h2 {
+      margin-bottom: 1rem;
+    }
+    .soal-block {
+      margin-bottom: 2rem;
+    }
+    .soal-block p {
+      margin: 0.5rem 0;
+    }
+    .result {
+      background: #e0ffe0;
+      padding: 1rem;
+      margin-top: 2rem;
+      border: 1px solid #0a0;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
   </style>
 </head>
 <body>
@@ -84,8 +108,12 @@
       return jawaban;
     }
 
-    document.getElementById("form-ujian").addEventListener("submit", async (e) => {
+    document.getElementById("form-ujian").addEventListener("submit", function (e) {
       e.preventDefault();
+
+      const button = e.target.querySelector("button");
+      button.disabled = true;
+      button.innerText = "Mengirim...";
 
       const answers_teknis = getJawaban("soal_teknis");
       const answers_psikologi = getJawaban("soal_psikologi");
@@ -96,26 +124,34 @@
         answers_psikologi
       };
 
-      const response = await fetch(endpoint, {
+      fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
-      });
-
-      const result = await response.json();
-
-      if (result.status === "success") {
-        document.getElementById("form-ujian").style.display = "none";
-        document.getElementById("hasil").style.display = "block";
-        document.getElementById("hasil").innerHTML = `
-          <h3>Terima kasih!</h3>
-          <p>Jawaban Anda berhasil dikirim.</p>
-          <p>Skor Teknis: <strong>${result.skor_teknis}</strong></p>
-          <p>Skor Psikologi: <strong>${result.skor_psikologi}</strong></p>
-        `;
-      } else {
-        alert("Gagal mengirim jawaban: " + result.message);
-      }
+      })
+        .then(res => res.json())
+        .then(result => {
+          if (result.status === "success") {
+            document.getElementById("form-ujian").style.display = "none";
+            document.getElementById("hasil").style.display = "block";
+            document.getElementById("hasil").innerHTML = `
+              <h3>Terima kasih!</h3>
+              <p>Jawaban Anda berhasil dikirim.</p>
+              <p>Skor Teknis: <strong>${result.skor_teknis}</strong></p>
+              <p>Skor Psikologi: <strong>${result.skor_psikologi}</strong></p>
+            `;
+          } else {
+            alert("Gagal mengirim jawaban: " + result.message);
+            button.disabled = false;
+            button.innerText = "Kirim Jawaban";
+          }
+        })
+        .catch(error => {
+          console.error("Gagal submit:", error);
+          alert("Terjadi kesalahan saat mengirim jawaban. Coba lagi nanti.");
+          button.disabled = false;
+          button.innerText = "Kirim Jawaban";
+        });
     });
   </script>
 </body>
